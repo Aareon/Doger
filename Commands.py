@@ -115,8 +115,8 @@ def tip(req, arg):
 		if Irc.equal_nicks(req.nick, req.target):
 			req.reply("Done [%s]" % (token))
 		else:
-			req.say("Such %s tipped much Ɖ%i to %s! (to claim /msg Doger help) [%s]" % (req.nick, amount, target_nick(to), token))
-		req.privmsg(target_nick(to), "Such %s has tipped you Ɖ%i (to claim /msg Doger help) [%s]" % (req.nick, amount, token), priority = 10)
+			req.say("Such %s tipped much Ɖ%i to %s! (to claim /msg %s help) [%s]" % (req.nick, amount, target_nick(to), req.instance, token))
+		req.privmsg(target_nick(to), "Such %s has tipped you Ɖ%i (to claim /msg %s help) [%s]" % (req.nick, amount, req.instance, token), priority = 10)
 	except Transactions.NotEnoughMoney:
 		req.reply_private("You tried to tip Ɖ%i but you only have Ɖ%i" % (amount, Transactions.balance(acct)))
 commands["tip"] = tip
@@ -218,13 +218,13 @@ def _help(req, arg):
 			req.reply(h)
 	else:
 		if not Irc.equal_nicks(req.target, req.nick):
-			return req.reply("I'm Doger, an IRC dogecoin tipbot. For more info do /msg Doger help")
+			return req.reply("I'm " + req.instance + ", an IRC dogecoin tipbot. For more info do /msg " + req.instance + " help")
 		acct = Irc.account_names([req.nick])[0]
 		if acct:
 			ident = "you're identified as \2" + acct + "\2"
 		else:
 			ident = "you're not identified"
-		req.say("I'm Doger, I'm an IRC dogecoin tipbot. To get help about a specific command, say \2%help <command>\2  Commands: %tip %balance %withdraw %deposit %mtip %donate %help".replace("%", Config.config["prefix"]))
+		req.say("I'm " + req.instance + ", I'm an IRC dogecoin tipbot. To get help about a specific command, say \2%help <command>\2  Commands: %tip %balance %withdraw %deposit %mtip %donate %help".replace("%", Config.config["prefix"]))
 		req.say(("Note that to receive or send tips you should be identified with freenode services (%s). Please consider donating with %%donate. For any support questions, including those related to lost coins, join ##doger" % (ident)).replace("%", Config.config["prefix"]))
 commands["help"] = _help
 
