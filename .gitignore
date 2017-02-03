@@ -2,6 +2,5 @@
 dogecoind
 Config.py
 *.log
-Active.py
 *.bak
 
