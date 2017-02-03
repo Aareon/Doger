@@ -1,6 +1,7 @@
 # coding=utf8
-import sys, os, time, math, pprint, traceback
+import sys, os, time, math, pprint, traceback, operator
 import Irc, Transactions, Blocknotify, Logger, Global, Hooks, Config
+from collections import OrderedDict
 
 commands = {}
 
@@ -224,7 +225,14 @@ def _help(req, arg):
 			ident = "you're identified as \2" + acct + "\2"
 		else:
 			ident = "you're not identified"
-		req.say("I'm " + req.instance + ", I'm an IRC dogecoin tipbot. To get help about a specific command, say \2%help <command>\2  Commands: %tip %balance %withdraw %deposit %mtip %donate %help".replace("%", Config.config["prefix"]))
+		# List of commands to not show users in help
+		hidecmd = ["as", "admin"]
+		allcmd = ""
+		sortedcmd = OrderedDict(sorted(commands.items(), key=operator.itemgetter(0)))
+		for onecmd in sortedcmd:
+			if not onecmd in hidecmd:
+				allcmd += Config.config["prefix"][0] + onecmd + " "
+		req.say("I'm " + req.instance + ", I'm an IRC dogecoin tipbot. To get help about a specific command, say \2%help <command>\2  Commands: ".replace("%", Config.config["prefix"])+ allcmd)
 		req.say(("Note that to receive or send tips you should be identified with freenode services (%s). Please consider donating with %%donate. For any support questions, including those related to lost coins, join ##doger" % (ident)).replace("%", Config.config["prefix"]))
 commands["help"] = _help
 
