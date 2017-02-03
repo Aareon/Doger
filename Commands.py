@@ -217,6 +217,105 @@ def active(req, arg):
         req.reply(output)
 commands["active"] = active
 
+def soak(req, arg):
+        """%soak <amt> [minutes] - Sends each active user an equal share of soaked amount"""
+        if not len(arg) or len(arg) % 1:
+                return req.reply(gethelp("soak"))
+        acct = Irc.account_names([req.nick])[0]
+        if not acct:
+                return req.reply_private("You are not identified with freenode services (see /msg NickServ help)")
+        if Transactions.lock(acct):
+                return req.reply_private("Your account is currently locked")
+        for i in range(0, len(arg), 1):
+                try:
+                        arg[i] = parse_amount(arg[i], acct)
+                except ValueError as e:
+                        return req.reply_private(str(e))
+        activeseconds = 600
+        if len(arg) > 1:
+                activeseconds = int(arg[1]) * 60
+        if activeseconds < 60:
+                activeseconds = 600
+        elif activeseconds > 86400:
+                activeseconds = 86400
+        curtime = time.time()
+        targets = []
+        targetnicks = []
+        failed = ""
+        for oneactive in Global.account_cache[req.target].keys():
+                try:
+                        curactivetime = curtime - Global.active_list[req.target][oneactive]
+                except:
+                        curactivetime = -1 # if not found default to expired
+                target = oneactive
+                if target != None and target != acct and target != req.nick and target != req.instance and target not in targets and curactivetime > 0 and curactivetime < activeseconds:
+                        targets.append(target)
+                        if Irc.getacctnick(target) and not Global.acctnick_list[target] == None:
+                                targetnicks.append(str(Global.acctnick_list[target]))
+                        else:
+                                targetnicks.append(str(target))
+
+        MinActive = 1
+        if len(targets) < MinActive:
+                return req.reply("This place seems dead. (Maybe try specifying more minutes..)")
+        accounts = Irc.account_names(targetnicks)
+        failedcount = 0
+        # we need a count of how many will fail to do calculations so pre-loop list
+        for i in range(len(accounts)):
+                if not accounts[i] or accounts[i] == None:
+                        Global.account_cache.setdefault(req.target, {})[targetnicks[i]] = None
+                        failedcount += 1
+        scraps = 0
+        amount = int(arg[0] / (len(targets) - failedcount))
+        total = (len(targets) - failedcount) * amount
+        scraps = int(arg[0]) - total
+        if scraps <= 0:
+                scraps = 0
+        balance = Transactions.balance(acct)
+        if total <= 0:
+                return req.reply("Unable to soak (Not enough to go around, Ɖ%d Minimum)" % (len(targets) - failedcount))
+        if total + scraps > balance:
+                return req.reply_private("You tried to soak %.0f %s but you only have %.0f %s" % (total+scraps, Config.config["coinab"], balance, Config.config["coinab"]))
+        totip = {}
+        tipped = ""
+        for i in range(len(accounts)):
+                if accounts[i]:
+                        totip[accounts[i]] = amount
+                        tipped += " %s" % (targetnicks[i])
+                elif accounts[i] == None:
+                        failed += " %s (o)" % (targetnicks[i])
+                else:
+                        failed += " %s (u)" % (targetnicks[i])
+
+        # special case where bot isn't included in soak but there are scraps
+        if req.instance not in accounts and scraps > 0:
+                totip[req.instance] = scraps
+                tipped += " %s (%d scraps)" % (req.instance, scraps)
+
+        token = Logger.token()
+        try:
+                Transactions.tip_multiple(token, acct, totip)
+        except Transactions.NotEnoughMoney:
+                return req.reply_private("You tried to soak %.0f %s but you only have %.0f %s" % (total, Config.config["coinab"], Transactions.balance(acct), Config.config["coinab"]))
+        output = "%s is soaking %d users with %d %s:" % (req.nick, len(targets), amount, Config.config["coinab"])
+        tippednicks = tipped.strip().split(" ")
+        # only show nicks if not too many active, if large enough total (default 1 to always show or change), if nick list changed or if enough time has passed
+        if len(tippednicks) > 100 or total + scraps < 1 or ((acct in Global.nicks_last_shown and Global.nicks_last_shown[acct] == tipped) and (acct+":last" in Global.nicks_last_shown and curtime < Global.nicks_last_shown[acct+":last"] + 600)):
+                output += " (See previous nick list ) [%s]" % (token)
+        else:
+                for onetipped in tippednicks:
+                        if onetipped:
+                                if len(output) < 250:
+                                        output += " " + onetipped
+                                else:
+                                        req.reply(output)
+                                        output = " " + onetipped
+                Global.nicks_last_shown[acct] = tipped
+                Global.nicks_last_shown[acct+":last"] = curtime
+        req.say(output)
+        Logger.log("c","SOAK %s %s skipped: %s" % (token, repr(targetnicks), repr(failed)))
+commands["soak"] = soak
+
 def donate(req, arg):
 	"""%donate <amount> - Donate 'amount' coins to help fund the server Doger is running on"""
 	if len(arg) < 1:

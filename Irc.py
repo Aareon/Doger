@@ -87,6 +87,12 @@ def account_names(nicks):
 	Logger.log("w", "Solution: " + " ".join([repr(x) for x in results]))
 	return results
 
+def getacctnick(acct):
+	if not acct in Global.acctnick_list:
+		return None
+	else:
+		return Global.acctnick_list[acct]
+
 def parse(cmd):
 	data = cmd.split(" ")
 	if data[0][0] != ':':
