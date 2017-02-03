@@ -38,10 +38,16 @@ def notify_block():
 	lb = daemon().listsinceblock(lastblock, Config.config["confirmations"])
 	db = database()
 	cur = db.cursor()
-	txlist = [(int(tx.amount), tx.address) for tx in lb["transactions"] if tx.category == "receive" and tx.confirmations >= Config.config["confirmations"]]
+	txlist = []
+	for tx in lb["transactions"]:
+		if tx.category == "receive" and tx.confirmations >= Config.config["confirmations"]:
+			txlist.append((int(tx.amount), tx.address, tx.txid.encode("ascii")))
+			Logger.log("c","INCOMING: %s %s %s" % (tx.amount, tx.txid.encode("ascii"), tx.address))
 	if len(txlist):
 		addrlist = [(tx[1],) for tx in txlist]
-		cur.executemany("UPDATE accounts SET balance = balance + %s FROM address_account WHERE accounts.account = address_account.account AND address_account.address = %s", txlist)
+		# updated to prevent duplicate deposits when bot started before wallet ready by only doing an update if txid doesn't already exist in db
+		# Ideally better option is wait until wallet is ready. Maybe getblockcount->getblockhash->getblock->"time" value age old enough?
+		cur.executemany("UPDATE accounts SET balance = balance + %s FROM address_account WHERE accounts.account = address_account.account AND address_account.address = %s AND (SELECT count(transaction) FROM txlog WHERE transaction = %s) = 0", txlist)
 		cur.executemany("UPDATE address_account SET used = '1' WHERE address = %s", addrlist)
 	unconfirmed = {}
 	for tx in lb["transactions"]:
