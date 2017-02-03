@@ -104,6 +104,13 @@ def message(instance, source, target, text):
 			commandline = text
 		if text[0] == Config.config["prefix"]:
 			commandline = text[1:]
+		# Track & update last time user talked in channel (ignore PM to bot for activity purposes)
+		if target.startswith('#'):
+			with Global.active_lock:
+				if not target in Global.active_list.keys():
+					Global.active_list[target] = {}
+				nick = Irc.get_nickname(source)
+				Global.active_list[target][nick] = time.time()
 		if commandline:
 			if Irc.is_ignored(host):
 				Logger.log("c", instance + ": %s <%s ignored> %s " % (target, Irc.get_nickname(source), text))

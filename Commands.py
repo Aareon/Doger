@@ -187,6 +187,36 @@ def mtip(req, arg):
 	req.reply(output)
 commands["mtip"] = mtip
 
+def active(req, arg):
+        """%active [minutes] - Lists out number of active users over past [x] minutes (default 10)"""
+        acct = Irc.account_names([req.nick])[0]
+        if not acct:
+                return req.reply_private("You are not identified with freenode services (see /msg NickServ help)")
+        for i in range(0, len(arg), 1):
+                try:
+                        arg[i] = parse_amount(arg[i], acct)
+                except ValueError as e:
+                        return req.reply_private(str(e))
+        activeseconds = 600
+        if len(arg) > 0:
+                activeseconds = int(arg[0]) * 60
+        if activeseconds < 60:
+                activeseconds = 600
+        elif activeseconds > 86400:
+                activeseconds = 86400
+        curtime = time.time()
+        targets = []
+        for oneactive in Global.account_cache[req.target].keys():
+                try:
+                        curactivetime = curtime - Global.active_list[req.target][oneactive]
+                except:
+                        curactivetime = -1
+                if oneactive != None and oneactive != acct and oneactive != req.nick and oneactive not in targets and curactivetime > 0 and curactivetime < activeseconds:
+                        targets.append(oneactive)
+        output = "I see %d eligible active users in the past %d minutes." % (len(targets),int(activeseconds/60))
+        req.reply(output)
+commands["active"] = active
+
 def donate(req, arg):
 	"""%donate <amount> - Donate 'amount' coins to help fund the server Doger is running on"""
 	if len(arg) < 1:

@@ -1,5 +1,8 @@
 import threading, Queue
 
+active_list = {}
+active_lock = threading.Lock()
+
 instances = {}
 
 ignores = {}
