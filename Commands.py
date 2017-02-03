@@ -31,7 +31,7 @@ def deposit(req, _):
 	req.reply_private("To deposit, send coins to %s (transactions will be credited after %d confirmations)" % (Transactions.deposit_address(acct), Config.config["confirmations"]))
 commands["deposit"] = deposit
 
-def parse_amount(s, acct, all_offset = 0):
+def parse_amount(s, acct, all_offset = 0, min_amount = 1, integer_only = True):
 	if s.lower() == "all":
 		return max(Transactions.balance(acct) + all_offset, 1)
 	else:
@@ -43,11 +43,16 @@ def parse_amount(s, acct, all_offset = 0):
 			raise ValueError(repr(s) + " - invalid amount")
 		if amount > 1e12:
 			raise ValueError(repr(s) + " - invalid amount (value too large)")
-		if amount <= 0:
-			raise ValueError(repr(s) + " - invalid amount (should be 1 or more)")
-		if not int(amount) == amount:
+		if amount < min_amount:
+			raise ValueError(repr(s) + " - invalid amount (must be 1 or more)")
+		if integer_only and not int(amount) == amount:
 			raise ValueError(repr(s) + " - invalid amount (should be integer)")
-		return int(amount)
+		if len(str(float(amount)).split(".")[1]) > 8:
+			raise ValueError(repr(s) + " - invalid amount (max 8 digits)")
+		if integer_only:
+			return int(amount)
+		else:
+			return amount
 
 def withdraw(req, arg):
 	"""%withdraw <address> [amount] - Sends 'amount' coins to the specified dogecoin address. If no amount specified, sends the whole balance"""
