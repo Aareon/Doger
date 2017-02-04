@@ -54,6 +54,12 @@ def parse_amount(s, acct, all_offset = 0, min_amount = 1, integer_only = True):
 		else:
 			return amount
 
+def is_soak_ignored(account):
+	if "soakignore" in Config.config:
+		return Config.config["soakignore"].get(account.lower(), False)
+	else:
+		return False
+
 def withdraw(req, arg):
 	"""%withdraw <address> [amount] - Sends 'amount' coins to the specified dogecoin address. If no amount specified, sends the whole balance"""
 	if len(arg) == 0:
@@ -211,7 +217,7 @@ def active(req, arg):
                         curactivetime = curtime - Global.active_list[req.target][oneactive]
                 except:
                         curactivetime = -1
-                if oneactive != None and oneactive != acct and oneactive != req.nick and oneactive not in targets and curactivetime > 0 and curactivetime < activeseconds:
+                if oneactive != None and oneactive != acct and oneactive != req.nick and oneactive not in targets and not is_soak_ignored(oneactive) and curactivetime > 0 and curactivetime < activeseconds:
                         targets.append(oneactive)
         output = "I see %d eligible active users in the past %d minutes." % (len(targets),int(activeseconds/60))
         req.reply(output)
@@ -248,7 +254,7 @@ def soak(req, arg):
                 except:
                         curactivetime = -1 # if not found default to expired
                 target = oneactive
-                if target != None and target != acct and target != req.nick and target != req.instance and target not in targets and curactivetime > 0 and curactivetime < activeseconds:
+                if target != None and target != acct and target != req.nick and target != req.instance and target not in targets and not is_soak_ignored(target) and curactivetime > 0 and curactivetime < activeseconds:
                         targets.append(target)
                         if Irc.getacctnick(target) and not Global.acctnick_list[target] == None:
                                 targetnicks.append(str(Global.acctnick_list[target]))
