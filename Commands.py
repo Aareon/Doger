@@ -322,6 +322,28 @@ def soak(req, arg):
         Logger.log("c","SOAK %s %s skipped: %s" % (token, repr(targetnicks), repr(failed)))
 commands["soak"] = soak
 
+def soakignore(req, arg):
+        """%soakignore <acct> [add/del] - Ignore ACCOUNT (not nick) from soak/rain/etc. Requires manual admin save to be perm"""
+        if not len(arg) or len(arg) % 1:
+                return req.reply(gethelp("soakignore"))
+        acct = Irc.account_names([req.nick])[0]
+        if not acct:
+                return req.reply_private("You are not identified with freenode services (see /msg NickServ help)")
+        if not Irc.is_admin(req.source):
+                return req.reply_private("You are not authorized to use this command")
+        if not "soakignore" in Config.config:
+                Config.config['soakignore'] = {}
+        if len(arg) > 1 and arg[1] == "del":
+                Config.config["soakignore"].pop(arg[0].lower(), False)
+        elif len(arg) > 1 and arg[1] == "add":
+                Config.config['soakignore'].update({arg[0].lower():True})
+        if not is_soak_ignored(arg[0]):
+                output = arg[0] + " is NOT ignored."
+        else:
+                output = arg[0] + " is ignored."
+        req.reply(output)
+commands["soakignore"] = soakignore
+
 def donate(req, arg):
 	"""%donate <amount> - Donate 'amount' coins to help fund the server Doger is running on"""
 	if len(arg) < 1:
